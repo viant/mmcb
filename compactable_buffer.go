@@ -43,6 +43,7 @@ type CompactableBuffer struct {
 	removedCount          int64
 	count                 int64
 	autoCompactionEnabled int32
+	notification          chan bool
 	compactionWaitGroup   *sync.WaitGroup
 }
 
@@ -101,6 +102,7 @@ func (b *CompactableBuffer) bufferForAddress(address *EntryAddress) (*Addressabl
 //Close closes underlying buffers.
 func (b *CompactableBuffer) Close() error {
 	if atomic.CompareAndSwapInt32(&b.autoCompactionEnabled, 1, 0) {
+		b.notification <- true
 		b.compactionWaitGroup.Wait()
 	}
 	readable := b.readableBuffer()
@@ -213,7 +215,7 @@ func (b *CompactableBuffer) Update(address *EntryAddress, data []byte) error {
 		return io.EOF
 	}
 	writableBuffer := b.writableBuffer()
-	_, err = writableBuffer.Write(address.Position()+reservedSize, target...)
+	_, err = writableBuffer.Write(address.Position() + reservedSize, target...)
 	return err
 }
 
@@ -280,7 +282,7 @@ func (b *CompactableBuffer) allocateEntry(data []byte) *Entry {
 	writableBuffer := b.writableBuffer()
 	header := &EntryHeader{status: statusValid}
 	payloadSize := len(data)
-	extensionSize := int(float32(payloadSize)*writableBuffer.config.ExtensionFactor) - payloadSize
+	extensionSize := int(float32(payloadSize) * writableBuffer.config.ExtensionFactor) - payloadSize
 	header.entrySize = int64(payloadSize + extensionSize + reservedSize)
 	header.entrySize = header.entrySize + int64(VarIntSize(int(header.entrySize)))
 	header.dataSize = int64(len(data))
@@ -439,14 +441,17 @@ func (b *CompactableBuffer) manageAutoCompaction() {
 				return
 			}
 
-			b.runAutoCompactionIfNeeded()
 			var currentTime = time.Now()
 			elapsedInSec := currentTime.Unix() - cycleStartTime.Unix()
 			cycleStartTime = currentTime
 			remainingTime := b.config.FrequencyInSec - int(elapsedInSec)
-			if remainingTime > 0 {
-				time.Sleep(time.Duration(remainingTime) * time.Second)
+			select {
+			case <-b.notification:
+				break
+			case <-time.After(time.Duration(remainingTime) * time.Second):
+				b.runAutoCompactionIfNeeded()
 			}
+
 		}
 
 	}()
@@ -498,8 +503,8 @@ func loadCompactingBufferIdNeeded(config *BufferConfig) (*AddressableBuffer, err
 	if err != nil {
 		return nil, err
 	}
-	if buffer.config.BufferId != config.BufferId+compactionBase {
-		return nil, fmt.Errorf("Invalid compating buffer id expected: %v, but had: %v", config.BufferId+compactionBase, buffer.config.BufferId)
+	if buffer.config.BufferId != config.BufferId + compactionBase {
+		return nil, fmt.Errorf("Invalid compating buffer id expected: %v, but had: %v", config.BufferId + compactionBase, buffer.config.BufferId)
 	}
 	return buffer, nil
 
@@ -532,6 +537,7 @@ func NewCompactableBuffer(config *CompatbleBufferConfig) (*CompactableBuffer, er
 	result.dataSize = addressableBuffer.dataSize
 	result.entrySize = addressableBuffer.entrySize
 	result.compactionWaitGroup = &sync.WaitGroup{}
+	result.notification = make(chan bool, 1)
 	result.manageAutoCompaction()
 
 	return result, nil

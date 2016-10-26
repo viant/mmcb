@@ -181,12 +181,9 @@ Example
 	}
 ```
 
-
 ## GoCover
 
 [![GoCover](https://gocover.io/github.com/viant/mmcb)](https://gocover.io/github.com/viant/mmcb)
-
-	
 	
 <a name="License"></a>
 ## License
