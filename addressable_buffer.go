@@ -194,6 +194,7 @@ func (b *AddressableBuffer) acquireAddress(entry *Entry) (uint64, error) {
 	atomic.StoreUint64(&b.currentPosition, previousPosition+uint64(entry.EntrySize()))
 	entry.dataAddress = previousPosition + reservedSize
 	_, err := b.Write(b.currentPosition, 0x0)
+	//	fmt.Printf("acquireAddress: %v %v\n",previousPosition,  b.currentPosition)
 	return previousPosition, err
 }
 
@@ -260,6 +261,7 @@ func (b *AddressableBuffer) load() error {
 		if err != nil {
 			switch err {
 			case ErrInvalidControlByte:
+				atomic.StoreUint64(&b.currentPosition, position)
 				return nil
 			default:
 				return fmt.Errorf("Failed to read header due to %v", err)
@@ -285,6 +287,7 @@ func (b *AddressableBuffer) load() error {
 		address = NewEntryAddress(b.config.BufferId, position)
 
 	}
+
 	return nil
 }
 

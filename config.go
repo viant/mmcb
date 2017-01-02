@@ -12,6 +12,21 @@ const (
 	CompactionSpaceBased
 	//CompactionFrequencyBased enables frequency based compaction
 	CompactionFrequencyBased
+
+	//ConfigDefaultBufferAutoCompactionPolicy 1
+	ConfigDefaultBufferAutoCompactionPolicy = 1
+	//ConfigDefaultBufferDeletionPctThreshold 40.0
+	ConfigDefaultBufferDeletionPctThreshold float32 = 40.0
+	//ConfigDefaultBufferRequiredFreeSpacetPct  30
+	ConfigDefaultBufferRequiredFreeSpacetPct float32 = 30
+	//ConfigDefaultBufferCompactionFrequencyInSec 30
+	ConfigDefaultBufferCompactionFrequencyInSec = 30
+	//ConfigDefaultBufferExtensionFactor 1.3
+	ConfigDefaultBufferExtensionFactor float32 = 1.3
+	//ConfigDefaultBufferId 1
+	ConfigDefaultBufferId uint8 = 1
+	//ConfigDefaultBufferInitialSize in bytes 4MB
+	ConfigDefaultBufferInitialSize = 4194304 //4MB
 )
 
 //BufferConfig represents a addressable buffer config.
@@ -81,4 +96,19 @@ func NewCompatbleBufferConfig(bufferId uint8, filename string, initialSize int, 
 		return nil, err
 	}
 	return result, nil
+}
+
+func NewDefaultNewCompatbleBufferConfig(filename string) *CompatbleBufferConfig {
+	return &CompatbleBufferConfig{
+		BufferConfig: &BufferConfig{
+			Filename:        filename,
+			ExtensionFactor: ConfigDefaultBufferExtensionFactor,
+			BufferId:        uint8(1),
+			InitialSize:     ConfigDefaultBufferInitialSize,
+		},
+		AutoCompactionPolicy:  ConfigDefaultBufferAutoCompactionPolicy,
+		DeletionPctThreshold:  ConfigDefaultBufferDeletionPctThreshold,
+		RequiredFreeSpacetPct: ConfigDefaultBufferRequiredFreeSpacetPct,
+		FrequencyInSec:        ConfigDefaultBufferCompactionFrequencyInSec,
+	}
 }

@@ -215,7 +215,7 @@ func (b *CompactableBuffer) Update(address *EntryAddress, data []byte) error {
 		return io.EOF
 	}
 	writableBuffer := b.writableBuffer()
-	_, err = writableBuffer.Write(address.Position() + reservedSize, target...)
+	_, err = writableBuffer.Write(address.Position()+reservedSize, target...)
 	return err
 }
 
@@ -282,7 +282,7 @@ func (b *CompactableBuffer) allocateEntry(data []byte) *Entry {
 	writableBuffer := b.writableBuffer()
 	header := &EntryHeader{status: statusValid}
 	payloadSize := len(data)
-	extensionSize := int(float32(payloadSize) * writableBuffer.config.ExtensionFactor) - payloadSize
+	extensionSize := int(float32(payloadSize)*writableBuffer.config.ExtensionFactor) - payloadSize
 	header.entrySize = int64(payloadSize + extensionSize + reservedSize)
 	header.entrySize = header.entrySize + int64(VarIntSize(int(header.entrySize)))
 	header.dataSize = int64(len(data))
@@ -503,8 +503,8 @@ func loadCompactingBufferIdNeeded(config *BufferConfig) (*AddressableBuffer, err
 	if err != nil {
 		return nil, err
 	}
-	if buffer.config.BufferId != config.BufferId + compactionBase {
-		return nil, fmt.Errorf("Invalid compating buffer id expected: %v, but had: %v", config.BufferId + compactionBase, buffer.config.BufferId)
+	if buffer.config.BufferId != config.BufferId+compactionBase {
+		return nil, fmt.Errorf("Invalid compating buffer id expected: %v, but had: %v", config.BufferId+compactionBase, buffer.config.BufferId)
 	}
 	return buffer, nil
 
