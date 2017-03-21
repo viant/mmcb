@@ -12,16 +12,30 @@ import (
 	"testing"
 )
 
-type Foo struct {
+type IntFoo struct {
 	Id   int
 	Name string
 }
+
+func(f *IntFoo) GetId() int {
+	return f.Id;
+}
+
+type StringFoo struct {
+	Id   string
+	Name string
+}
+
+func(f *StringFoo) GetId() string {
+	return f.Id;
+}
+
 
 type IntFooMap struct {
 	*mmcb.AbstractIntMap
 }
 
-func (m *IntFooMap) Put(key int, value *Foo) error {
+func (m *IntFooMap) Put(key int, value *IntFoo) error {
 	var data, err = m.Encode(value)
 	if err != nil {
 		return fmt.Errorf("Failed to put data %v", err)
@@ -41,7 +55,7 @@ func (m *IntFooMap) Put(key int, value *Foo) error {
 	return nil
 }
 
-func (m *IntFooMap) Get(key int) (*Foo, error) {
+func (m *IntFooMap) Get(key int) (*IntFoo, error) {
 	address := m.GetAddress(key)
 	if address == nil {
 		return nil, nil
@@ -50,7 +64,7 @@ func (m *IntFooMap) Get(key int) (*Foo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get data for %v - unable get reader %v", key, err)
 	}
-	var result = &Foo{}
+	var result = &IntFoo{}
 	err = m.DecoderFactory.Create(reader).Decode(&result)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get data for %v - unable decode %v", key, err)
@@ -81,7 +95,7 @@ func (m *IntFooMap) loadPersistedData() error {
 		if err != nil {
 			return fmt.Errorf("Failed to get  EntryReader %v", err)
 		}
-		foo := &Foo{}
+		foo := &IntFoo{}
 		err = m.Decode(reader, foo)
 		if err != nil {
 			return fmt.Errorf("Failed to load persisted data %v", err)
@@ -111,7 +125,7 @@ func TestIntFooMap(t *testing.T) {
 	assert.Nil(t, err)
 	aMap, err := NewIntFooMap(toolbox.NewJSONEncoderFactory(), toolbox.NewJSONDecoderFactory(), config)
 	assert.Nil(t, err)
-	err = aMap.Put(1, &Foo{101, "abc"})
+	err = aMap.Put(1, &IntFoo{101, "abc"})
 	assert.Nil(t, err)
 	foo, err := aMap.Get(1)
 	assert.Nil(t, err)
@@ -122,7 +136,7 @@ func TestIntFooMap(t *testing.T) {
 	waitGroup.Add(100000)
 	for i := 0; i < 100000; i++ {
 		go func(i int) {
-			foo := &Foo{Id: i % 1000, Name: fmt.Sprintf("abc%v%v", i%1000, rand.Int())}
+			foo := &IntFoo{Id: i % 1000, Name: fmt.Sprintf("abc%v%v", i%1000, rand.Int())}
 			err := aMap.Put(i%1000, foo)
 			waitGroup.Done()
 			assert.Nil(t, err)
@@ -168,7 +182,7 @@ type StringFooMap struct {
 	*mmcb.AbstractStringMap
 }
 
-func (m *StringFooMap) Put(key string, value *Foo) error {
+func (m *StringFooMap) Put(key string, value *StringFoo) error {
 	var data, err = m.Encode(value)
 	if err != nil {
 		return fmt.Errorf("Failed to put data %v", err)
@@ -188,7 +202,7 @@ func (m *StringFooMap) Put(key string, value *Foo) error {
 	return nil
 }
 
-func (m *StringFooMap) Get(key string) (*Foo, error) {
+func (m *StringFooMap) Get(key string) (*StringFoo, error) {
 	address := m.GetAddress(key)
 	if address == nil {
 		return nil, nil
@@ -197,7 +211,7 @@ func (m *StringFooMap) Get(key string) (*Foo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get data for %v - unable get reader %v", key, err)
 	}
-	var result = &Foo{}
+	var result = &StringFoo{}
 	err = m.DecoderFactory.Create(reader).Decode(&result)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get data for %v - unable decode %v", key, err)
@@ -228,7 +242,7 @@ func (m *StringFooMap) loadPersistedData() error {
 		if err != nil {
 			return fmt.Errorf("Failed to get  EntryReader %v", err)
 		}
-		foo := &Foo{}
+		foo := &StringFoo{}
 		err = m.Decode(reader, foo)
 		if err != nil {
 			return fmt.Errorf("Failed to load persisted data %v", err)
@@ -251,6 +265,8 @@ func NewStringFooMap(encoderFactory toolbox.EncoderFactory, decoderFactory toolb
 	return result, nil
 }
 
+
+
 func TestStringFooMap(t *testing.T) {
 	filenames := []string{"/tmp/stringfoo.mmf", "/tmp/stringfoo.mmfc"}
 	err := removeTestFiles(filenames)
@@ -258,7 +274,7 @@ func TestStringFooMap(t *testing.T) {
 	assert.Nil(t, err)
 	aMap, err := NewStringFooMap(toolbox.NewJSONEncoderFactory(), toolbox.NewJSONDecoderFactory(), config)
 	assert.Nil(t, err)
-	err = aMap.Put("aaa", &Foo{101, "abc"})
+	err = aMap.Put("aaa", &StringFoo{"101", "abc"})
 	assert.Nil(t, err)
 
 	foo, err := aMap.Get("aaac")
@@ -267,7 +283,7 @@ func TestStringFooMap(t *testing.T) {
 
 	foo, err = aMap.Get("aaa")
 	assert.Nil(t, err)
-	assert.Equal(t, 101, foo.Id)
+	assert.Equal(t, "101", foo.Id)
 	assert.Equal(t, "abc", foo.Name)
 
 	err = aMap.Close()
@@ -305,4 +321,104 @@ func removeTestFiles(filenames []string) error {
 		}
 	}
 	return nil
+}
+
+
+
+func TestNewAbstractMap(t *testing.T) {
+
+	{
+		filenames := []string{"/tmp/iabsfoo.mmf", "/tmp/iabsfoo.mmfc"}
+		err := removeTestFiles(filenames)
+
+		config, err := mmcb.NewCompatbleBufferConfig(uint8(1), filenames[0], 8 * 1024, 1.2, mmcb.CompactionSpaceBased, 70, 20.0, 1)
+		assert.Nil(t, err)
+		valurProvider := func() interface{} {
+			return &IntFoo{}
+		}
+
+		abstractMap, err := mmcb.NewAbstractMap(nil, nil, config, valurProvider, true, "");
+		assert.Nil(t, err)
+		assert.False(t, abstractMap.Exists(1));
+		err = abstractMap.Put(&IntFoo{1, "Test 1"});
+		assert.Nil(t, err)
+		assert.True(t, abstractMap.Exists(1));
+
+		err = abstractMap.Put(&IntFoo{2, "Test 2"});
+		assert.Nil(t, err)
+		assert.True(t, abstractMap.Exists(2));
+		err = abstractMap.Remove(1);
+		assert.False(t, abstractMap.Exists(1));
+		abstractMap.Close();
+		abstractMap, err = mmcb.NewAbstractMap(nil, nil, config, valurProvider, true, "");
+		assert.True(t, abstractMap.Exists(2));
+		abstractMap.Close();
+		err = removeTestFiles(filenames)
+		assert.Nil(t, err)
+
+	}
+
+	{
+		filenames := []string{"/tmp/iabsfoo.mmf", "/tmp/iabsfoo.mmfc"}
+		err := removeTestFiles(filenames)
+
+		config, err := mmcb.NewCompatbleBufferConfig(uint8(1), filenames[0], 8 * 1024, 1.2, mmcb.CompactionSpaceBased, 70, 20.0, 1)
+		assert.Nil(t, err)
+		valurProvider := func() interface{} {
+			return &IntFoo{}
+		}
+
+		abstractMap, err := mmcb.NewAbstractMap(nil, nil, config, valurProvider, true, "");
+		assert.Nil(t, err)
+		assert.False(t, abstractMap.Exists(1));
+		err = abstractMap.Put(&IntFoo{1, "Test 1"});
+		assert.Nil(t, err)
+		assert.True(t, abstractMap.Exists(1));
+
+		err = abstractMap.Put(&IntFoo{2, "Test 2"});
+		assert.Nil(t, err)
+		assert.True(t, abstractMap.Exists(2));
+		err = abstractMap.Remove(1);
+		assert.False(t, abstractMap.Exists(1));
+		abstractMap.Close();
+		abstractMap, err = mmcb.NewAbstractMap(nil, nil, config, valurProvider, true, "");
+		assert.True(t, abstractMap.Exists(2));
+		abstractMap.Close();
+		err = removeTestFiles(filenames)
+		assert.Nil(t, err)
+
+	}
+	{
+		filenames := []string{"/tmp/sabsfoo.mmf", "/tmp/sabsfoo.mmfc"}
+		err := removeTestFiles(filenames)
+
+		config, err := mmcb.NewCompatbleBufferConfig(uint8(1), filenames[0], 8 * 1024, 1.2, mmcb.CompactionSpaceBased, 70, 20.0, 1)
+		assert.Nil(t, err)
+		valurProvider := func() interface{} {
+			return &StringFoo{}
+		}
+
+		abstractMap, err := mmcb.NewAbstractMap(nil, nil, config, valurProvider, false, "");
+		assert.Nil(t, err)
+		assert.False(t, abstractMap.Exists("1"));
+		err = abstractMap.Put(&StringFoo{"1", "Test 1"});
+		assert.Nil(t, err)
+		assert.True(t, abstractMap.Exists("1"));
+
+		err = abstractMap.Put(&StringFoo{"2", "Test 2"});
+		assert.Nil(t, err)
+		assert.True(t, abstractMap.Exists("2"));
+		err = abstractMap.Remove("1");
+		assert.False(t, abstractMap.Exists("1"));
+		abstractMap.Close();
+		abstractMap, err = mmcb.NewAbstractMap(nil, nil, config, valurProvider, false, "");
+		assert.Nil(t, err)
+
+		assert.True(t, abstractMap.Exists("2"));
+		abstractMap.Close();
+		err = removeTestFiles(filenames)
+		assert.Nil(t, err)
+
+	}
+
 }
